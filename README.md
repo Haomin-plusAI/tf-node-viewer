@@ -9,3 +9,11 @@ python3 export_tb.py
 tensorboard --logdir=./log
 
 python3 inference_8bit.py
+
+ipython3
+run inference_8bit.py
+import view_node as nv
+nv.init(tf.get_default_graph())
+nv.ls()
+nv.ls("import/y_pred")
+nv.snap("import/y_pred")
