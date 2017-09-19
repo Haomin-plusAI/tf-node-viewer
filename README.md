@@ -7,3 +7,5 @@ python3 deep_mlp.py
 python3 export_tb.py
 
 tensorboard --logdir=./log
+
+python3 inference_8bit.py
