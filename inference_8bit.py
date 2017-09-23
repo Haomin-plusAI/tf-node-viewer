@@ -1,7 +1,5 @@
-#TODO:
-#Choose a typical input as a golden standard
-#Proporgate through the network
-#Display the tensor value on screen base on a specified index
+#Neil Tan
+#This script loads the quantized graph and performs inference bases on it
 
 import tensorflow as tf
 import argparse

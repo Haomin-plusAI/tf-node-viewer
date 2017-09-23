@@ -1,15 +1,5 @@
-"""A deep MNIST classifier using convolutional layers.
-
-See extensive documentation at
-https://www.tensorflow.org/get_started/mnist/pros
-"""
-# Disable linter warnings to maintain consistency with tutorial.
-# pylint: disable=invalid-name
-# pylint: disable=g-bad-import-order
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+#This script is based on:
+#https://www.tensorflow.org/get_started/mnist/pros
 
 import argparse
 import sys
@@ -41,15 +31,6 @@ def deepnn(x):
     W_fc3 = weight_variable([64, 10], name='W_fc3')
     b_fc3 = bias_variable([10], name='b_fc3')
     y_pred = tf.matmul(h_fc2, W_fc3) + b_fc3
-   
-
-    # Dropout - controls the complexity of the model, prevents co-adaptation of
-    # features.
-    # keep_prob = tf.placeholder(tf.float32)
-    # h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
-
-    # Map the 1024 features to 10 classes, one for each digit
-
 
     return y_pred
 
@@ -87,7 +68,6 @@ def main(_):
 
   with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    #saver = tf.train.Saver(write_version = saver_pb2.SaverDef.V1)
     saver = tf.train.Saver()
 
     graph_path = tf.train.write_graph(sess.graph_def, './my-model', 'train.pb')
@@ -100,10 +80,6 @@ def main(_):
             x: batch[0], y_: batch[1]})
         print('step %d, training accuracy %g' % (i, train_accuracy))
       train_step.run(feed_dict={x: batch[0], y_: batch[1]})
-
-    # if step % 5000 == 0:
-    #     print('saving at step: %d' % step)
-    #     saver.save(sess, 'my-model', global_step=step)
 
     print('test accuracy %g' % accuracy.eval(feed_dict={
         x: mnist.test.images, y_: mnist.test.labels}))

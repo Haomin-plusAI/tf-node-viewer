@@ -1,4 +1,4 @@
-#Graph Navigator // gnv
+#Graph Viewer // gnv
 #by Neil Tan
 
 #https://stackoverflow.com/questions/28616512/can-a-python-script-access-variables-defined-in-an-interactive-session
@@ -7,14 +7,6 @@
 
 # A Graph contains a set of tf.Operation objects, which represent units of computation; and tf.Tensor objects, which represent the units of data that flow between operations.
 # https://www.tensorflow.org/api_docs/python/tf/Graph
-
-# run inference_8bit.py
-# import view_node as nv
-# nv.init(tf.get_default_graph())
-# nv.ls()
-# nv.ls("import/y_pred")
-# nv.out("import/y_pred:0")
-# nv.snap("import/y_pred")
 
 import idx2numpy
 import numpy as np

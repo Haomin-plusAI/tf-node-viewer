@@ -1,3 +1,6 @@
+#Neil Tan
+#A script that loads a saved graph and produce Tensorboard files bases on it
+
 import tensorflow as tf
 from tensorflow.python.platform import gfile
 
