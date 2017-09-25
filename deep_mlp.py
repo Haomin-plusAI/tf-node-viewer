@@ -5,7 +5,6 @@ import argparse
 import sys
 
 from tensorflow.examples.tutorials.mnist import input_data
-from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.tools import freeze_graph
 
 import tensorflow as tf
@@ -52,7 +51,7 @@ def main(_):
   mnist = input_data.read_data_sets(FLAGS.data_dir, one_hot=True)
 
   # Create the model
-  x = tf.placeholder(tf.float32, [None, 784])
+  x = tf.placeholder(tf.float32, [None, 784], name="x")
 
   # Define loss and optimizer
   y_ = tf.placeholder(tf.float32, [None, 10])
@@ -70,7 +69,10 @@ def main(_):
     sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
 
-    graph_path = tf.train.write_graph(sess.graph_def, './my-model', 'train.pb')
+    graph_path = tf.train.write_graph(sess.graph_def, 
+                                      './my-model', 
+                                      'train.pb',
+                                      as_text=False)
     print('written graph to: %s' % graph_path)
 
     for i in range(20000):
@@ -83,7 +85,6 @@ def main(_):
 
     print('test accuracy %g' % accuracy.eval(feed_dict={
         x: mnist.test.images, y_: mnist.test.labels}))
-    
     saver.save(sess, "./my-model/model.ckpt")
 
 
