@@ -1,14 +1,5 @@
 # -*- coding:utf8 -*-
-#Graph Viewer // gnv
-#by Neil Tan
-
-#https://stackoverflow.com/questions/28616512/can-a-python-script-access-variables-defined-in-an-interactive-session
-#run -i view_node.py
-#execfile('view_node.py')
-
-# A Graph contains a set of tf.Operation objects, which represent units of computation; and tf.Tensor objects, which represent the units of data that flow between operations.
-# https://www.tensorflow.org/api_docs/python/tf/Graph
-
+# Graph Viewer by Neil Tan, Dboy Liao
 import os
 import sys
 import idx2numpy
@@ -80,14 +71,12 @@ class GraphInspector(object):
         =======
         `bool`: `True` if success, `False` otherwise
         """
+        print(node_name)
         # i.e. tName  = 'import/Variable_quint8_const:0'
         t = self._graph.get_tensor_by_name(node_name)
-        try:
-            with tf.Session(graph=self._graph) as sess:
-                tf.global_variables_initializer().run()
-                arr = t.eval(self._feed_dict)
-        except:
-            return True
+        with tf.Session(graph=self._graph) as sess:
+            tf.global_variables_initializer().run()
+            arr = t.eval(self._feed_dict)
 
         # a work-around for idx2numpy, doesn't play well with single values
         if arr.shape == ():

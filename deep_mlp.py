@@ -1,37 +1,32 @@
-#This script is based on:
-#https://www.tensorflow.org/get_started/mnist/pros
+# This script is based on:
+# https://www.tensorflow.org/get_started/mnist/pros
 
 import argparse
 import sys
-
-from tensorflow.examples.tutorials.mnist import input_data
-from tensorflow.python.tools import freeze_graph
-
 import tensorflow as tf
+from tensorflow.examples.tutorials.mnist import input_data
+from tensorflow.python.framework import graph_util as gu
 
 FLAGS = None
 
-
 def deepnn(x):
+  # https://mxnet.incubator.apache.org/tutorials/python/mnist.html
 
+  W_fc1 = weight_variable([784, 128], name='W_fc1')
+  b_fc1 = bias_variable([128], name='b_fc1')
+  a_fc1 = tf.matmul(x, W_fc1) + b_fc1
+  h_fc1 = tf.nn.relu(a_fc1)
 
-    #https://mxnet.incubator.apache.org/tutorials/python/mnist.html
+  W_fc2 = weight_variable([128, 64], name='W_fc2')
+  b_fc2 = bias_variable([64], name='b_fc2')
+  a_fc2 = tf.matmul(h_fc1, W_fc2) + b_fc2
+  h_fc2 = tf.nn.relu(a_fc2)
 
-    W_fc1 = weight_variable([784, 128], name='W_fc1')
-    b_fc1 = bias_variable([128], name='b_fc1')
-    a_fc1 = tf.matmul(x, W_fc1) + b_fc1
-    h_fc1 = tf.nn.relu(a_fc1)
+  W_fc3 = weight_variable([64, 10], name='W_fc3')
+  b_fc3 = bias_variable([10], name='b_fc3')
+  y_pred = tf.matmul(h_fc2, W_fc3) + b_fc3
 
-    W_fc2 = weight_variable([128, 64], name='W_fc2')
-    b_fc2 = bias_variable([64], name='b_fc2')
-    a_fc2 = tf.matmul(h_fc1, W_fc2) + b_fc2
-    h_fc2 = tf.nn.relu(a_fc2)
-
-    W_fc3 = weight_variable([64, 10], name='W_fc3')
-    b_fc3 = bias_variable([10], name='b_fc3')
-    y_pred = tf.matmul(h_fc2, W_fc3) + b_fc3
-
-    return y_pred
+  return y_pred
 
 
 def weight_variable(shape, name):
@@ -54,7 +49,7 @@ def main(_):
   x = tf.placeholder(tf.float32, [None, 784], name="x")
 
   # Define loss and optimizer
-  y_ = tf.placeholder(tf.float32, [None, 10])
+  y_ = tf.placeholder(tf.float32, [None, 10], name="y")
 
   # Build the graph for the deep net
   y_pred = deepnn(x)
@@ -65,15 +60,12 @@ def main(_):
   correct_prediction = tf.equal(tf.argmax(y_pred, 1, name='y_pred'), tf.argmax(y_, 1))
   accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+  tf.summary.FileWriter(logdir="graph_log", graph=tf.get_default_graph()).close()
+  print("writing graph log to ./graph_log (tensorboard)")
+
   with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
-
-    graph_path = tf.train.write_graph(sess.graph_def, 
-                                      './my-model', 
-                                      'train.pb',
-                                      as_text=False)
-    print('written graph to: %s' % graph_path)
 
     for i in range(20000):
       batch = mnist.train.next_batch(50)
@@ -86,7 +78,13 @@ def main(_):
     print('test accuracy %g' % accuracy.eval(feed_dict={
         x: mnist.test.images, y_: mnist.test.labels}))
     saver.save(sess, "./my-model/model.ckpt")
-
+    out_nodes = [y_pred.op.name, y_.op.name, cross_entropy.op.name,
+                 correct_prediction.op.name, accuracy.op.name]
+    sub_graph_def = gu.convert_variables_to_constants(sess, sess.graph_def, out_nodes)
+    graph_path = tf.train.write_graph(sub_graph_def, 
+                                      "./my-model", "train.pb", 
+                                      as_text=False)
+    print('written graph to: %s' % graph_path)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
