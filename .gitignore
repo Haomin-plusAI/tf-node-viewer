@@ -1,0 +1,4 @@
+.vscode/
+.dev_env/
+*.pb
+*.idx
