@@ -87,18 +87,13 @@ Import node_viewer and supply the graph. Here, placeholder `x` is replaced with 
 
 ```
 import tensorflow as tf
-from view_node import GraphInspector
+from view_node import GraphInspector, load_graph
 
 # import graph
-graph = tf.Graph()
-with graph.as_default():
-    graph_def = tf.GraphDef()
-    with open("./my-model/train.pb") as fid:
-        graph_def.ParseFromString(fid.read())
-        tf.import_graph_def(graph_def, name="")
+graph = load_graph("./my-model/train.pb", name="")
 
 # initialize GraphInspector
-inspector = GraphInspector(graph, feed_dict={x: mnist.test.images[0:10]})
+inspector = GraphInspector(graph, feed_dict={"x:0": mnist.test.images[0:10]})
 ```
 
 Listing all the Ops in the graph:
@@ -149,6 +144,11 @@ Here is a quickway to save all the input/output values of the Op to idx files:
 ```
 inspector.snap("y_pred")
 ```
+
+## Test
+
+1. run `python3 deep_mlp.py`: generate testing `.pb` file
+2. run `python3 test_list.py`: testing basic functionality
 
 ## References
 

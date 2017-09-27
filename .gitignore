@@ -1,4 +1,6 @@
 .vscode/
 .dev_env/
+graph_log/
+my-model/
 *.pb
 *.idx
