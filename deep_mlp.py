@@ -12,19 +12,22 @@ FLAGS = None
 def deepnn(x):
   # https://mxnet.incubator.apache.org/tutorials/python/mnist.html
 
-  W_fc1 = weight_variable([784, 128], name='W_fc1')
-  b_fc1 = bias_variable([128], name='b_fc1')
-  a_fc1 = tf.matmul(x, W_fc1) + b_fc1
-  h_fc1 = tf.nn.relu(a_fc1)
+  with tf.name_scope("Layer1"):
+    W_fc1 = weight_variable([784, 128], name='W_fc1')
+    b_fc1 = bias_variable([128], name='b_fc1')
+    a_fc1 = tf.add(tf.matmul(x, W_fc1), b_fc1, name="zscore")
+    h_fc1 = tf.nn.relu(a_fc1)
 
-  W_fc2 = weight_variable([128, 64], name='W_fc2')
-  b_fc2 = bias_variable([64], name='b_fc2')
-  a_fc2 = tf.matmul(h_fc1, W_fc2) + b_fc2
-  h_fc2 = tf.nn.relu(a_fc2)
-
-  W_fc3 = weight_variable([64, 10], name='W_fc3')
-  b_fc3 = bias_variable([10], name='b_fc3')
-  y_pred = tf.matmul(h_fc2, W_fc3) + b_fc3
+  with tf.name_scope("Layer2"):
+    W_fc2 = weight_variable([128, 64], name='W_fc2')
+    b_fc2 = bias_variable([64], name='b_fc2')
+    a_fc2 = tf.add(tf.matmul(h_fc1, W_fc2), b_fc2, name="zscore")
+    h_fc2 = tf.nn.relu(a_fc2)
+  
+  with tf.name_scope("OuputLayer"):
+    W_fc3 = weight_variable([64, 10], name='W_fc3')
+    b_fc3 = bias_variable([10], name='b_fc3')
+    y_pred = tf.add(tf.matmul(h_fc2, W_fc3), b_fc3, name="prediction")
 
   return y_pred
 
@@ -54,11 +57,16 @@ def main(_):
   # Build the graph for the deep net
   y_pred = deepnn(x)
 
-  cross_entropy = tf.reduce_mean(
-      tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y_pred))
-  train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
-  correct_prediction = tf.equal(tf.argmax(y_pred, 1, name='y_pred'), tf.argmax(y_, 1))
-  accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+  with tf.name_scope("Loss"):
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_, 
+                                                            logits=y_pred)
+    loss = tf.reduce_mean(cross_entropy, name="cross_entropy_loss")
+  train_step = tf.train.AdamOptimizer(1e-4).minimize(loss, name="train_step")
+  
+  with tf.name_scope("Prediction"): 
+    correct_prediction = tf.equal(tf.argmax(y_pred, 1, name='y_pred'), 
+                                  tf.argmax(y_, 1))
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="accuracy")
 
   tf.summary.FileWriter(logdir="graph_log", graph=tf.get_default_graph()).close()
   print("writing graph log to ./graph_log (tensorboard)")
