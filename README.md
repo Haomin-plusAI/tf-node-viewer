@@ -32,7 +32,88 @@ test accuracy 0.9711
 ```
 Regulation and Dropped-out are not employed in the interest of graph-simplicity
 
-## 8-bit Graph Quantization (Optional)
+## Example of `node_view.GraphInspector`
+
+```
+import tensorflow as tf
+from view_node import GraphInspector, load_graph
+
+# import graph
+graph = load_graph("./my-model/train.pb", name="")
+
+# initialize GraphInspector
+inspector = GraphInspector(graph, feed_dict={"x:0": mnist.test.images[0:10]})
+```
+
+Listing all the Ops in the graph:
+```
+inspector.ls()
+"""
+x
+y
+Layer1/Variable
+Layer1/Variable/read
+Layer1/Variable_1
+...
+Prediction/y_pred
+Prediction/ArgMax/dimension
+Prediction/ArgMax
+...
+"""
+```
+
+Inspecting an Op, the information displayed here is the same in Tensorboard:
+
+```
+inspector.ls("Prediction/y_pred")
+"""
+name: "Prediction/y_pred"
+op: "ArgMax"
+input: "OuputLayer/prediction"
+input: "Prediction/y_pred/dimension"
+attr {
+  key: "T"
+  value {
+    type: DT_FLOAT
+  }
+}
+attr {
+  key: "Tidx"
+  value {
+    type: DT_INT32
+  }
+}
+
+Output Tensor Names:
+Tensor("Prediction/y_pred:0", shape=(?,), dtype=int64)
+
+Output to:
+Prediction/y_pred
+"""
+```
+
+Here is a quickway to save all the input/output values of the Op to idx files:
+```
+inspector.snap("y_pred")
+"""
+Prediction/Equal
+========== in ==========
+0 : OuputLayer/prediction:0
+outputName: OuputLayer-prediction_0.idx
+1 : Prediction/y_pred/dimension:0
+outputName: Prediction-y_pred-dimension_0.idx
+========== out =========
+0 : Prediction/y_pred:0
+outputName: Prediction-y_pred_0.idx
+"""
+```
+
+## Test
+
+1. run `python3 deep_mlp.py`: generate testing `.pb` file
+2. run `python3 test_list.py`: testing basic functionality
+
+## (TODO) 8-bit Graph Quantization (Optional)
 Use freeze_graph and quantize_graph to convert `./my-model/train.pb` to an 8-bit quantized graph.
 
 `%tensorflow%` here refers to the root of the tensorflow repository.
@@ -51,7 +132,7 @@ frozen_graph.pb    quantized_graph.pb
 ```
 These step will produce a quantized graph`./graph_out/quantized_graph.pb` for our example
 
-## Create the Tensorboard files
+### Create the Tensorboard Files for Quantized Graph
 
 export_tb.py creates the log files using `./graph_out/quantized_graph.pb`
 
@@ -65,7 +146,7 @@ Run Tensorboard:
 tensorboard --logdir=./log
 ```
 
-## Using Node Viewer with the graph file
+### Using Node Viewer with the graph file
 
 With ipython3, inference_8bit.py loads the graph in `./graph_out/quantized_graph.pb` which we will use with the node-viewer.
 
@@ -82,73 +163,6 @@ inference:    [7 2 1 0 4 1 4 9 6 9]
 test labels:  [7 2 1 0 4 1 4 9 5 9]
 ```
 Import node_viewer and supply the graph. Here, placeholder `x` is replaced with the first 10 entries of the test set.
-
-## Example of `node_view.GraphInspector`
-
-```
-import tensorflow as tf
-from view_node import GraphInspector
-
-# import graph
-graph = tf.Graph()
-with graph.as_default():
-    graph_def = tf.GraphDef()
-    with open("./my-model/train.pb") as fid:
-        graph_def.ParseFromString(fid.read())
-        tf.import_graph_def(graph_def, name="")
-
-# initialize GraphInspector
-inspector = GraphInspector(graph, feed_dict={x: mnist.test.images[0:10]})
-```
-
-Listing all the Ops in the graph:
-```
-inspector.ls()
-"""
-...
-MatMul_2_eightbit_requantize
-MatMul_2
-Variable_5
-add_2
-y_pred/dimension
-y_pred
-...
-"""
-```
-
-Inspecting an Op, the information displayed here is the same in Tensorboard:
-
-```
-inspector.ls("y_pred")
-
-name: "y_pred"
-op: "ArgMax"
-input: "add_2"
-input: "y_pred/dimension"
-attr {
-  key: "T"
-  value {
-    type: DT_FLOAT
-  }
-}
-attr {
-  key: "Tidx"
-  value {
-    type: DT_INT32
-  }
-}
-
-Output Tensor Names:
-Tensor("y_pred:0", shape=(?,), dtype=int64)
-
-Output to:
-y_pred
-```
-
-Here is a quickway to save all the input/output values of the Op to idx files:
-```
-inspector.snap("y_pred")
-```
 
 ## References
 
