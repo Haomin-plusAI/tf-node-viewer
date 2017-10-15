@@ -11,5 +11,5 @@ graph = load_graph("./my-model/train.pb", "")
 inspector = GraphInspector(graph, feed_dict={'x:0': mnist.test.images[0:10]})
 
 inspector.ls()
-inspector.ls("y_pred")
-inspector.snap("y_pred")
+inspector.ls("Prediction/y_pred")
+inspector.snap("Prediction/y_pred")
