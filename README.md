@@ -34,18 +34,42 @@ Regulation and Dropped-out are not employed in the interest of graph-simplicity
 
 ## Example of `node_view.GraphInspector`
 
+The steps below can be performed in iPython or a script.
+
+### Importing packages:
+
 ```
 import tensorflow as tf
 from view_node import GraphInspector, load_graph
-
-# import graph
-graph = load_graph("./my-model/train.pb", name="")
-
-# initialize GraphInspector
-inspector = GraphInspector(graph, feed_dict={"x:0": mnist.test.images[0:10]})
 ```
 
-Listing all the Ops in the graph:
+### importing dataset:
+
+```
+from tensorflow.examples.tutorials.mnist import input_data
+mnist = input_data.read_data_sets("/tmp/tensorflow/mnist/input_data", one_hot=True)
+```
+
+### importing graph:
+
+```
+graph = load_graph("./my-model/train.pb", name="")
+```
+
+### initialize GraphInspector:
+
+```
+inspector = GraphInspector(graph, feed_dict={"x:0": mnist.test.images[0:10]})
+```
+Or, you may use it without `feed_dict`:
+
+```
+inspector = GraphInspector(graph)
+inspector.ls()
+...
+```
+
+### Listing all the Ops in the graph:
 ```
 inspector.ls()
 """
