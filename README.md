@@ -21,7 +21,7 @@ With the mnist dataset, the deep_mlp.py creates a 3-layer fully-connected networ
 
 ```
 $ python3 deep_mlp.py
-
+...
 step 19500, training accuracy 0.94
 step 19600, training accuracy 0.94
 step 19700, training accuracy 1
@@ -68,6 +68,8 @@ inspector = GraphInspector(graph)
 inspector.ls()
 ...
 ```
+Note that some methods may not function properly without feed_dict.
+Such as `snap`.
 
 ### Listing all the Ops in the graph:
 ```
@@ -138,23 +140,17 @@ outputName: Prediction-y_pred_0.idx
 2. run `python3 test_list.py`: testing basic functionality
 
 ## (TODO) 8-bit Graph Quantization (Optional)
-Use freeze_graph and quantize_graph to convert `./my-model/train.pb` to an 8-bit quantized graph.
-
-`%tensorflow%` here refers to the root of the tensorflow repository.
-
-freeze_graph:
-```
-$ mkdir graph_out
-$ %tensorflow%/bazel-bin/tensorflow/python/tools/freeze_graph --input_graph=./my-model/train.pb --input_checkpoint=./my-model/model.ckpt --output_graph=./graph_out/frozen_graph.pb  --output_node_names=y_pred
-```
+Use quantize_graph to convert `./my-model/train.pb` to an 8-bit quantized graph.
 
 quantize_graph:
+1. download the script `quantize_graph.py` from tensorflow github repo over [here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/quantization/quantize_graph.py)
+2. create a directory named `graph_logs`
+3. run `python3 quantize_graph.py --input my-model/train.pb --mode=eightbit --output graph_out/quantized_graph.pb --output_node_names="Prediction/y_pred"`
 ```
-$ %tensorflow%/bazel-bin/tensorflow/tools/quantization/quantize_graph --input=./graph_out/frozen_graph.pb --output_node_names="y_pred" --output=./graph_out/quantized_graph.pb --mode=eightbit
 $ ls graph_out
-frozen_graph.pb    quantized_graph.pb
+quantized_graph.pb
 ```
-These step will produce a quantized graph`./graph_out/quantized_graph.pb` for our example
+These steps will produce a quantized graph`./graph_out/quantized_graph.pb` for our example
 
 ### Create the Tensorboard Files for Quantized Graph
 
