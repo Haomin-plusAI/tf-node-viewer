@@ -10,8 +10,6 @@ from tensorflow.python.framework import graph_util as gu
 FLAGS = None
 
 def deepnn(x):
-  # https://mxnet.incubator.apache.org/tutorials/python/mnist.html
-
   with tf.name_scope("Layer1"):
     W_fc1 = weight_variable([784, 128], name='W_fc1')
     b_fc1 = bias_variable([128], name='b_fc1')
@@ -68,9 +66,6 @@ def main(_):
                                   tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="accuracy")
 
-  tf.summary.FileWriter(logdir="graph_log", graph=tf.get_default_graph()).close()
-  print("writing graph log to ./graph_log (tensorboard)")
-
   with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
@@ -101,6 +96,3 @@ if __name__ == '__main__':
                       help='Directory for storing input data')
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
-
-#/Users/neitan01/src/tensorflow/bazel-bin/tensorflow/python/tools/freeze_graph --input_graph=./my-model/train.pb --input_checkpoint=./my-model/model.ckpt --output_graph=./graph_out/frozen_graph.pb  --output_node_names=y_pred
-#/Users/neitan01/src/tensorflow/bazel-bin/tensorflow/tools/quantization/quantize_graph --input=./graph_out/frozen_graph.pb --output_node_names="y_pred" --output=./graph_out/quantized_graph.pb --mode=eightbit
