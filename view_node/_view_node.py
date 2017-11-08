@@ -142,12 +142,12 @@ class GraphInspector(object):
     
         print("========== in ==========")
         for i, it_input in enumerate(op.inputs):
-            print(str(i) + " : ", end='')
+            sys.stdout.write(str(i) + " : ")
             if not self.export_tensor(it_input.name, str(outPath), "inputs"):
                 return False
 
         print("========== out =========")
         for i, it_output in enumerate(op.outputs):
-            print(str(i) + " : ", end='')
+            sys.stdout.write(str(i) + " : ")
             if not self.export_tensor(it_output.name, str(outPath), "outputs"):
                 return False
