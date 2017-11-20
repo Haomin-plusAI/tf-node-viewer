@@ -95,7 +95,7 @@ class GraphInspector(object):
         outPath = outPath / outdir
 
         if not outPath.exists():
-            os.makedirs(outPath)
+            os.makedirs(str(outPath))
         elif outPath.exists() and not outPath.is_dir():
             print("invalid path")
             return False
@@ -135,7 +135,7 @@ class GraphInspector(object):
 
         outPath = outPath / outdir
         if not outPath.exists():
-            os.makedirs(outPath)
+            os.makedirs(str(outPath))
         elif outPath.exists() and not outPath.is_dir():
             print("invalid path")
             return False
