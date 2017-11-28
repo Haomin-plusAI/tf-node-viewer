@@ -1,5 +1,5 @@
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 
 LONG_DESC = open('README.md').read()
 LICENSE = open('LICENSE').read()
@@ -19,5 +19,5 @@ setup(
     author='Neil Tan',
     author_email='michael.bartling15@gmail.com',
     license=LICENSE,
-    packages=["view_node"],
+    packages=find_packages()
 )

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding:utf8 -*-
 # Neil Tan, Dboy Liao
-# This script loads the quantized graph and performs 
+# This script loads the quantized graph and performs
 # inference bases on it
 
-import tensorflow as tf
 import argparse
-from tensorflow.python.platform import gfile
+import tensorflow as tf
+from tensorflow.python.platform import gfile  # pylint: disable=E0611
 from tensorflow.examples.tutorials.mnist import input_data
 
 
