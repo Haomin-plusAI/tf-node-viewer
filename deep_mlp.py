@@ -1,13 +1,45 @@
 # This script is based on:
 # https://www.tensorflow.org/get_started/mnist/pros
+#
+# References:
+# https://www.tensorflow.org/versions/master/api_guides/python/input_dataset
+# https://www.tensorflow.org/versions/master/performance/datasets_performance
+# https://www.tensorflow.org/versions/master/programmers_guide/datasets
+# https://www.tensorflow.org/api_docs/python/tf/data/Dataset#from_generator
+# https://towardsdatascience.com/how-to-use-dataset-in-tensorflow-c758ef9e4428
 
 import argparse
 import sys
 import tensorflow as tf
+import numpy as np
 from tensorflow.examples.tutorials.mnist import input_data
 from tensorflow.python.framework import graph_util as gu
 
 FLAGS = None
+
+class MNIST_Generator(object):
+
+  def __init__(self, data_dir):
+    self._mnist = input_data.read_data_sets(data_dir, one_hot=True)
+
+  def gen(self):
+    num_images = self._images.shape[0]
+    rand_index = np.random.random_integers(num_images - 1)
+    label = self._labels[rand_index]
+    image = self._images[rand_index]
+    #mnist.train.images[np.random.random_integers(mnist.train.images.shape[0])]
+    return (image, label)
+
+  def genTrainData(self):
+    self._images = self._mnist.train.images
+    self._labels = self._mnist.train.labels
+    yield self.gen()
+
+  def genTestData(self):
+    self._images = self._mnist.test.images
+    self._labels = self._mnist.test.labels
+    yield self.gen()
+
 
 def deepnn(x):
   with tf.name_scope("Layer1"):
@@ -44,13 +76,22 @@ def bias_variable(shape, name):
 
 def main(_):
   # Import data
-  mnist = input_data.read_data_sets(FLAGS.data_dir, one_hot=True)
+  mnist_inputPipe = MNIST_Generator(FLAGS.data_dir)
+  ds_train = tf.data.Dataset.from_generator(
+    mnist_inputPipe.genTrainData, (tf.float32, tf.float32), (tf.TensorShape([784]), tf.TensorShape([10])))
+  #ds = ds.shuffle(buffer_size=FLAGS.shuffle_buffer_size)
+  ds_train = ds_train.repeat()
+  ds_train = ds_train.batch(batch_size=FLAGS.batch_size)
 
-  # Create the model
-  x = tf.placeholder(tf.float32, [None, 784], name="x")
+  ds_test = tf.data.Dataset.from_generator(
+    mnist_inputPipe.genTestData, (tf.float32, tf.float32), (tf.TensorShape([784]), tf.TensorShape([10])))
+  ds_test = ds_test.repeat()
+  ds_test = ds_test.batch(batch_size=FLAGS.batch_size)
+  iterator = tf.data.Iterator.from_structure(ds_train.output_types, ds_train.output_shapes)
 
-  # Define loss and optimizer
-  y_ = tf.placeholder(tf.float32, [None, 10], name="y")
+  training_init_op = iterator.make_initializer(ds_train)
+  testing_init_op = iterator.make_initializer(ds_test)
+  (x, y_) = iterator.get_next()
 
   # Build the graph for the deep net
   y_pred = deepnn(x)
@@ -70,16 +111,16 @@ def main(_):
     sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
 
-    for i in range(20000):
-      batch = mnist.train.next_batch(50)
+    for i in range(1000):  #change this to 20000
+      #batch = mnist.train.next_batch(50)
+      sess.run(training_init_op)
       if i % 100 == 0:
-        train_accuracy = accuracy.eval(feed_dict={
-            x: batch[0], y_: batch[1]})
+        train_accuracy = accuracy.eval()
         print('step %d, training accuracy %g' % (i, train_accuracy))
-      train_step.run(feed_dict={x: batch[0], y_: batch[1]})
+      train_step.run()
 
-    print('test accuracy %g' % accuracy.eval(feed_dict={
-        x: mnist.test.images, y_: mnist.test.labels}))
+    sess.run(testing_init_op)
+    print('test accuracy %g' % accuracy.eval())
     saver.save(sess, "./my-model/model.ckpt")
     out_nodes = [y_pred.op.name, y_.op.name, cross_entropy.op.name,
                  correct_prediction.op.name, accuracy.op.name]
@@ -94,5 +135,8 @@ if __name__ == '__main__':
   parser.add_argument('--data_dir', type=str,
                       default='/tmp/tensorflow/mnist/input_data',
                       help='Directory for storing input data')
+  parser.add_argument('--batch_size', type=int,
+                      default=100,
+                      help='batch size, default = 100')
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
