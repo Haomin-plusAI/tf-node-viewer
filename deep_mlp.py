@@ -15,6 +15,8 @@ import numpy as np
 import cv2
 from tensorflow.examples.tutorials.mnist import input_data
 from tensorflow.python.framework import graph_util as gu
+from datetime import datetime
+import time
 
 FLAGS = None
 keep_prob = 0.65
@@ -162,68 +164,104 @@ def bias_variable(shape, name):
 
 
 def main(_):
-  # Import data
-  mnist_inputPipe = MNIST_Generator(FLAGS.data_dir)
-  ds_train = tf.data.Dataset.from_generator(
-    mnist_inputPipe.genTrainData, (tf.float32, tf.float32), (tf.TensorShape([784]), tf.TensorShape([10])))
-  #ds = ds.shuffle(buffer_size=FLAGS.shuffle_buffer_size)
-  ds_train = ds_train.repeat()
-  ds_train = ds_train.batch(batch_size=FLAGS.batch_size)
 
-  ds_test = tf.data.Dataset.from_generator(
-    mnist_inputPipe.genTestData, (tf.float32, tf.float32), (tf.TensorShape([784]), tf.TensorShape([10])))
-  ds_test = ds_test.repeat()
-  ds_test = ds_test.batch(batch_size=FLAGS.batch_size)
-  iterator = tf.data.Iterator.from_structure(ds_train.output_types, ds_train.output_shapes)
+  with tf.Graph().as_default():
+    global_step = tf.train.get_or_create_global_step()
+    # Import data
+    mnist_inputPipe = MNIST_Generator(FLAGS.data_dir)
+    ds_train = tf.data.Dataset.from_generator(
+      mnist_inputPipe.genTrainData, (tf.float32, tf.float32), (tf.TensorShape([784]), tf.TensorShape([10])))
+    #ds = ds.shuffle(buffer_size=FLAGS.shuffle_buffer_size)
+    ds_train = ds_train.repeat()
+    ds_train = ds_train.batch(batch_size=FLAGS.batch_size)
 
-  training_init_op = iterator.make_initializer(ds_train)
-  testing_init_op = iterator.make_initializer(ds_test)
-  (x, y_) = iterator.get_next()
+    ds_test = tf.data.Dataset.from_generator(
+      mnist_inputPipe.genTestData, (tf.float32, tf.float32), (tf.TensorShape([784]), tf.TensorShape([10])))
+    ds_test = ds_test.repeat()
+    ds_test = ds_test.batch(batch_size=FLAGS.batch_size)
+    iterator = tf.data.Iterator.from_structure(ds_train.output_types, ds_train.output_shapes)
 
-  # Build the graph for the deep net
-  y_pred = deepnn(x)
+    training_init_op = iterator.make_initializer(ds_train)
+    testing_init_op = iterator.make_initializer(ds_test)
+    (x, y_) = iterator.get_next()
 
-  with tf.name_scope("Loss"):
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_, 
-                                                            logits=y_pred)
-    loss = tf.reduce_mean(cross_entropy, name="cross_entropy_loss")
-  train_step = tf.train.AdamOptimizer(1e-4).minimize(loss, name="train_step")
-  
-  with tf.name_scope("Prediction"): 
-    correct_prediction = tf.equal(tf.argmax(y_pred, 1, name='y_pred'), 
-                                  tf.argmax(y_, 1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="accuracy")
+    # Build the graph for the deep net
+    y_pred = deepnn(x)
 
-  with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
-    saver = tf.train.Saver()
+    with tf.name_scope("Loss"):
+      cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_, 
+                                                              logits=y_pred)
+      loss = tf.reduce_mean(cross_entropy, name="cross_entropy_loss")
+    train_step = tf.train.AdamOptimizer(1e-4).minimize(loss, tf.train.get_global_step(), name="train_step")
+    
+    with tf.name_scope("Prediction"): 
+      correct_prediction = tf.equal(tf.argmax(y_pred, 1, name='y_pred'), 
+                                    tf.argmax(y_, 1))
+      accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="accuracy")
 
-    for i in range(10000):  #change this to 20000
-      #batch = mnist.train.next_batch(50)
-      sess.run(training_init_op)
-      if i % 100 == 0:
-        train_accuracy = accuracy.eval()
-        print('step %d, training accuracy %g' % (i, train_accuracy))
-      train_step.run()
+    class _LoggerHook(tf.train.SessionRunHook):
+      """Logs loss and runtime."""
+      def begin(self):
+        self._step = -1
+        self._start_time = time.time()
+      def before_run(self, run_context):
+        self._step += 1
+        return tf.train.SessionRunArgs(loss)  # Asks for loss value.
+      def after_run(self, run_context, run_values):
+        if self._step % FLAGS.log_frequency == 0:
+          current_time = time.time()
+          duration = current_time - self._start_time
+          self._start_time = current_time
+          loss_value = run_values.results
+          examples_per_sec = FLAGS.log_frequency * FLAGS.batch_size / duration
+          sec_per_batch = float(duration / FLAGS.log_frequency)
+          format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
+                        'sec/batch)')
+          print (format_str % (datetime.now(), self._step, loss_value,
+                              examples_per_sec, sec_per_batch))
 
-    sess.run(testing_init_op)
-    print('test accuracy %g' % accuracy.eval())
-    saver.save(sess, "./my-model/model.ckpt")
-    out_nodes = [y_pred.op.name, y_.op.name, cross_entropy.op.name,
-                 correct_prediction.op.name, accuracy.op.name]
-    sub_graph_def = gu.convert_variables_to_constants(sess, sess.graph_def, out_nodes)
-    graph_path = tf.train.write_graph(sub_graph_def, 
-                                      "./my-model", "train.pb", 
-                                      as_text=False)
-    print('written graph to: %s' % graph_path)
+    with tf.train.MonitoredTrainingSession(
+        checkpoint_dir=FLAGS.chk_dir,
+        hooks=[tf.train.StopAtStepHook(last_step=FLAGS.max_steps),
+               tf.train.NanTensorHook(loss),
+               _LoggerHook()],
+        config=tf.ConfigProto(
+            log_device_placement=FLAGS.log_device_placement)) as mon_sess:
+
+      while not mon_sess.should_stop():
+        mon_sess.run(training_init_op)
+        mon_sess.run(train_step)
+
+        # if i % 100 == 0:
+        #   train_accuracy = accuracy.eval()
+        #   print('step %d, training accuracy %g' % (i, train_accuracy))
+        
+
+      mon_sess.run(testing_init_op)
+      print('test accuracy %g' % accuracy.eval())
+
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('--data_dir', type=str,
                       default='/tmp/tensorflow/mnist/input_data',
                       help='Directory for storing input data')
+  parser.add_argument('--chk_dir', type=str,
+                      default='./checkpoint',
+                      help='Directory for storing check point')
   parser.add_argument('--batch_size', type=int,
                       default=100,
                       help='batch size, default = 100')
+  parser.add_argument('--max_steps', type=int,
+                      default=1000000,
+                      help='Number of batches to run')
+  parser.add_argument('--log_device_placement', type=bool,
+                      default=False,
+                      help='Whether to log device placement.')
+  parser.add_argument('--log_frequency', type=int,
+                      default=10,
+                      help='How often to log results to the console.')
+
+
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
