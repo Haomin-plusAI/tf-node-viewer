@@ -14,7 +14,6 @@ import tensorflow as tf
 import numpy as np
 import cv2
 from tensorflow.examples.tutorials.mnist import input_data
-from tensorflow.python.framework import graph_util as gu
 from datetime import datetime
 import time
 
@@ -165,8 +164,9 @@ def bias_variable(shape, name):
 
 def main(_):
 
-  with tf.Graph().as_default():
-    global_step = tf.train.get_or_create_global_step()
+  global_step = tf.train.get_or_create_global_step(graph=tf.get_default_graph())
+  
+  with tf.name_scope("Pipeline"):
     # Import data
     mnist_inputPipe = MNIST_Generator(FLAGS.data_dir)
     ds_train = tf.data.Dataset.from_generator(
@@ -174,71 +174,66 @@ def main(_):
     #ds = ds.shuffle(buffer_size=FLAGS.shuffle_buffer_size)
     ds_train = ds_train.repeat()
     ds_train = ds_train.batch(batch_size=FLAGS.batch_size)
-
     ds_test = tf.data.Dataset.from_generator(
       mnist_inputPipe.genTestData, (tf.float32, tf.float32), (tf.TensorShape([784]), tf.TensorShape([10])))
     ds_test = ds_test.repeat()
     ds_test = ds_test.batch(batch_size=FLAGS.batch_size)
     iterator = tf.data.Iterator.from_structure(ds_train.output_types, ds_train.output_shapes)
-
     training_init_op = iterator.make_initializer(ds_train)
     testing_init_op = iterator.make_initializer(ds_test)
-    (x, y_) = iterator.get_next()
-
-    # Build the graph for the deep net
-    y_pred = deepnn(x)
-
-    with tf.name_scope("Loss"):
-      cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_, 
-                                                              logits=y_pred)
-      loss = tf.reduce_mean(cross_entropy, name="cross_entropy_loss")
-    train_step = tf.train.AdamOptimizer(1e-4).minimize(loss, tf.train.get_global_step(), name="train_step")
     
-    with tf.name_scope("Prediction"): 
-      correct_prediction = tf.equal(tf.argmax(y_pred, 1, name='y_pred'), 
-                                    tf.argmax(y_, 1))
-      accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="accuracy")
+  (x, y_) = iterator.get_next()
+  
+  # Build the graph for the deep net
+  y_pred = deepnn(x)
 
-    class _LoggerHook(tf.train.SessionRunHook):
-      """Logs loss and runtime."""
-      def begin(self):
-        self._step = -1
-        self._start_time = time.time()
-      def before_run(self, run_context):
-        self._step += 1
-        return tf.train.SessionRunArgs(loss)  # Asks for loss value.
-      def after_run(self, run_context, run_values):
-        if self._step % FLAGS.log_frequency == 0:
-          current_time = time.time()
-          duration = current_time - self._start_time
-          self._start_time = current_time
-          loss_value = run_values.results
-          examples_per_sec = FLAGS.log_frequency * FLAGS.batch_size / duration
-          sec_per_batch = float(duration / FLAGS.log_frequency)
-          format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
-                        'sec/batch)')
-          print (format_str % (datetime.now(), self._step, loss_value,
-                              examples_per_sec, sec_per_batch))
+  with tf.name_scope("Loss"):
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_, 
+                                                            logits=y_pred)
+    loss = tf.reduce_mean(cross_entropy, name="cross_entropy_loss")
+  train_step = tf.train.AdamOptimizer(1e-4).minimize(loss, tf.train.get_global_step(), name="train_step")
+  
+  with tf.name_scope("Prediction"): 
+    correct_prediction = tf.equal(tf.argmax(y_pred, 1, name='y_pred'), 
+                                  tf.argmax(y_, 1))
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="accuracy")
+    tf.summary.scalar('accuracy', accuracy)
 
-    with tf.train.MonitoredTrainingSession(
-        checkpoint_dir=FLAGS.chk_dir,
-        hooks=[tf.train.StopAtStepHook(last_step=FLAGS.max_steps),
-               tf.train.NanTensorHook(loss),
-               _LoggerHook()],
-        config=tf.ConfigProto(
-            log_device_placement=FLAGS.log_device_placement)) as mon_sess:
+  class _LoggerHook(tf.train.SessionRunHook):
+    """Logs loss and runtime."""
+    def begin(self):
+      self._step = -1
+      self._start_time = time.time()
+    def before_run(self, run_context):
+      self._step += 1
+      return tf.train.SessionRunArgs(loss)  # Asks for loss value.
+    def after_run(self, run_context, run_values):
+      if self._step % FLAGS.log_frequency == 0:
+        current_time = time.time()
+        duration = current_time - self._start_time
+        self._start_time = current_time
+        loss_value = run_values.results
+        examples_per_sec = FLAGS.log_frequency * FLAGS.batch_size / duration
+        sec_per_batch = float(duration / FLAGS.log_frequency)
+        format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
+                      'sec/batch)')
+        print (format_str % (datetime.now(), self._step, loss_value,
+                            examples_per_sec, sec_per_batch))
+  with tf.train.MonitoredTrainingSession(
+      checkpoint_dir=FLAGS.chk_dir,
+      hooks=[tf.train.StopAtStepHook(last_step=FLAGS.max_steps),
+             tf.train.NanTensorHook(loss),
+             _LoggerHook()],
+      config=tf.ConfigProto(
+          log_device_placement=FLAGS.log_device_placement)) as mon_sess:
 
-      while not mon_sess.should_stop():
-        mon_sess.run(training_init_op)
-        mon_sess.run(train_step)
-
-        # if i % 100 == 0:
-        #   train_accuracy = accuracy.eval()
-        #   print('step %d, training accuracy %g' % (i, train_accuracy))
-        
-
-      mon_sess.run(testing_init_op)
-      print('test accuracy %g' % accuracy.eval())
+    while not mon_sess.should_stop():
+      mon_sess.run(training_init_op)
+      mon_sess.run(train_step)
+      if global_step.eval(mon_sess) % 100 == 0:
+        mon_sess.run(testing_init_op)
+        tf.summary.scalar('test accuracy', accuracy)
+        print('test accuracy %g' % accuracy.eval(mon_sess))
 
 
 if __name__ == '__main__':
