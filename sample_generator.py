@@ -31,6 +31,27 @@ class MNIST_Generator(object):
     self._labels = self._mnist.train.labels
     yield self.gen()
 
+  def next_batch(self, batch_size):
+    batch_data = np.zeros([batch_size, self._images.shape[1]])  #TODO: extendable dimensions
+    batch_label = np.zeros([batch_size, self._labels.shape[1]])
+
+    for i in range(batch_size):
+      data, label = self.gen()
+      batch_data[i, :] = data
+      batch_label[i, :] = label
+    
+    return (batch_data, batch_label)
+
+  def next_train_batch(self, batch_size):
+    self._images = self._mnist.train.images
+    self._labels = self._mnist.train.labels
+    return self.next_batch(batch_size)
+
+  def next_test_batch(self):
+    self._images = self._mnist.test.images
+    self._labels = self._mnist.test.labels
+    return self.next_batch(self._mnist.test.images.shape[0])
+
   def getNumTrain(self):
     return self._mnist.train.images.shape[0]
 
