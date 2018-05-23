@@ -125,10 +125,10 @@ if __name__ == '__main__':
                       help='session check point (default: %(default)s)')
   parser.add_argument('-n', '--num-iteration', type=int,
                       dest='num_iter',
-                      default=20000,
+                      default=40000,
                       help='number of iterations (default: %(default)s)')
   parser.add_argument('--batch-size', dest='batch_size',
-                      default=150, type=int,
+                      default=120, type=int,
                       help='batch size (default: %(default)s)')
   parser.add_argument('--log-every-iters', type=int,
                       dest='log_iter', default=1000,

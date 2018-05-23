@@ -65,8 +65,8 @@ class MNIST_Generator(object):
 
   def image_frame(self, input, output_dim, fill=0):
     output = np.full(output_dim, fill, dtype=input.dtype)
-    delta_x = (input.shape[0] - output_dim[0]) / 2
-    delta_y = (input.shape[1] - output_dim[1]) / 2
+    delta_x = (input.shape[0] - output_dim[0]) / 2.0 #true div, python2 compatibility
+    delta_y = (input.shape[1] - output_dim[1]) / 2.0
 
     if(delta_x >= 0):
         src_x0 = delta_x
